@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Galería Responsive Estilo Fotos iPhone con Loader</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    background: #fff;
+    overflow-x: hidden;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    font-weight: 600;
+    font-size: 1.3rem;
+    border-bottom: 1px solid #ddd;
+    background: #f9f9f9;
+    flex-shrink: 0;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  header svg {
+    width: 26px;
+    height: 26px;
+    margin-right: 10px;
+    fill: #1e40af;
+    flex-shrink: 0;
+  }
+
+  main {
+    flex-grow: 1;
+    overflow-y: auto;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Placeholder loader */
+  .placeholder {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: linear-gradient(90deg, #ddd 25%, #eee 50%, #ddd 75%);
+    background-size: 200% 100%;
+    animation: shine 1.6s infinite linear;
+    border-radius: 0;
+  }
+  @keyframes shine {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  .photo-grid img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    cursor: pointer;
+    margin: 0;
+    user-select: none;
+    border-radius: 0;
+    opacity: 0;
+    transform: scale(0.92);
+    animation-fill-mode: forwards;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-duration: 600ms;
+    transition: transform 300ms ease-out, filter 300ms ease-out, box-shadow 300ms ease-out;
+  }
+  .photo-grid img:hover,
+  .photo-grid img:focus-visible {
+    transform: scale(1.12);
+    filter: brightness(1.15) saturate(1.25);
+    z-index: 3;
+    box-shadow: 0 12px 25px rgba(0,0,0,0.35);
+    position: relative;
+    outline-offset: 3px;
+  }
+
+  @keyframes fadeScaleIn {
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0);
+    pointer-events: none;
+    z-index: 100;
+    transition: background 400ms ease, backdrop-filter 400ms ease;
+    will-change: background, backdrop-filter;
+  }
+  .modal-backdrop.active {
+    pointer-events: auto;
+    background: rgba(0,0,0,0.68);
+    backdrop-filter: blur(12px);
+  }
+
+  .zoom-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    will-change: transform, width, height;
+    cursor: zoom-out;
+    border-radius: 18px;
+    box-shadow: 0 0 50px rgba(0,0,0,0.85);
+    overflow: hidden;
+    z-index: 101;
+    user-select: none;
+    background: #111;
+    transform-origin: center center;
+    transform-style: preserve-3d;
+    transition: box-shadow 300ms ease, width 600ms ease, height 600ms ease, transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  .zoom-container:hover {
+    box-shadow: 0 0 60px rgba(0,0,0,0.95);
+  }
+  .zoom-container img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    border-radius: 18px;
+  }
+
+  .close-btn {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    color: white;
+    font-weight: 700;
+    font-size: 28px;
+    line-height: 40px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 102;
+    user-select: none;
+    transition: opacity 300ms ease, transform 300ms ease, background 300ms ease;
+    font-family: Arial, sans-serif;
+    box-shadow: 0 0 15px rgba(0,0,0,0.85);
+    opacity: 0;
+    transform: scale(0.8);
+    outline-offset: 3px;
+  }
+  .close-btn.visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .close-btn:focus-visible {
+    box-shadow: 0 0 8px 2px #3b82f6;
+    background: rgba(0,0,0,0.9);
+    outline: none;
+  }
+  .close-btn:hover {
+    background: rgba(0, 0, 0, 0.95);
+  }
+
+  @media (min-width: 600px) {
+    .photo-grid {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+  }
+  @media (min-width: 900px) {
+    .photo-grid {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+  }
+</style>
+</head>
+<body>
+<header>
+  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false" >
+    <!-- Ícono cámara -->
+    <path d="M20 5h-3.586l-1.707-1.707A.996.996 0 0014 3H10c-.265 0-.52.105-.707.293L7.586 5H4c-1.103 0-2 .897-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7c0-1.103-.897-2-2-2zM12 17a5 5 0 110-10 5 5 0 010 10z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+  Fotos
+</header>
+<main>
+  <div class="photo-grid" id="photoGrid" aria-label="Galería de fotos" role="list">
+    <!-- Aquí estarán los placeholders mientras cargan las imágenes -->
+  </div>
+</main>
+<div class="modal-backdrop" id="modalBackdrop" tabindex="-1" aria-hidden="true"></div>
+
+<script>
+  const photoGrid = document.getElementById('photoGrid');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const numPhotos = 120;
+
+  // Generar seeds únicos para imágenes (igual que antes)
+  const seeds = new Set();
+  while (seeds.size < numPhotos) {
+    seeds.add(Math.floor(Math.random() * 1085));
+  }
+
+  const photoData = Array.from(seeds).map(seed => ({
+    thumb: `https://picsum.photos/id/${seed}/300/300`,
+    large: `https://picsum.photos/id/${seed}/900/900`,
+  }));
+
+  // Crear placeholders (skeletons)
+  function createPlaceholders(count) {
+    photoGrid.innerHTML = '';
+    for(let i = 0; i < count; i++) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'placeholder';
+      photoGrid.appendChild(placeholder);
+    }
+  }
+
+  // Preload imágenes en miniatura
+  function preloadImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => resolve(url);
+      img.onerror = () => reject(url);
+    });
+  }
+
+  async function preloadAllThumbs() {
+    createPlaceholders(numPhotos);
+    const promises = photoData.map(p => preloadImage(p.thumb));
+    try {
+      await Promise.all(promises);
+      renderPhotos();
+    } catch(errUrl) {
+      console.warn('Falló la carga de la imagen:', errUrl);
+      renderPhotos(); // igual seguimos
+    }
+  }
+
+  // Quitar placeholders y mostrar imágenes reales
+  function renderPhotos() {
+    photoGrid.innerHTML = '';
+    photoData.forEach((p, i) => {
+      const img = document.createElement('img');
+      img.src = p.thumb;
+      img.alt = `Foto ${i + 1}`;
+      img.loading = 'lazy';
+      img.tabIndex = 0;
+      img.setAttribute('role', 'listitem');
+      img.dataset.large = p.large;
+      img.style.animation = `fadeScaleIn 0.6s ease forwards`;
+      img.style.animationDelay = `${i * 35}ms`;
+      img.addEventListener('click', () => zoomIn(img));
+      img.addEventListener('keydown', e => {
+        if(e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          zoomIn(img);
+        }
+      });
+      photoGrid.appendChild(img);
+    });
+  }
+
+  preloadAllThumbs();
+
+  // Zoom modal - igual que antes
+  let zoomContainer = null;
+  let zoomImg = null;
+  let closeBtn = null;
+  let isAnimating = false;
+
+  function zoomIn(thumb) {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    const largeSrc = thumb.dataset.large;
+    const rect = thumb.getBoundingClientRect();
+
+    zoomContainer = document.createElement('div');
+    zoomContainer.className = 'zoom-container';
+    zoomContainer.setAttribute('role', 'dialog');
+    zoomContainer.setAttribute('aria-modal', 'true');
+    zoomContainer.setAttribute('aria-label', `Imagen ampliada: ${thumb.alt}`);
+
+    zoomImg = document.createElement('img');
+    zoomImg.src = largeSrc;
+    zoomImg.alt = thumb.alt;
+    zoomContainer.appendChild(zoomImg);
+    document.body.appendChild(zoomContainer);
+
+    closeBtn = document.createElement('button');
+    closeBtn.className = 'close-btn';
+    closeBtn.setAttribute('aria-label', 'Cerrar imagen ampliada');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.type = 'button';
+    document.body.appendChild(closeBtn);
+
+    requestAnimationFrame(() => closeBtn.classList.add('visible'));
+
+    closeBtn.addEventListener('click', zoomOut);
+    closeBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        zoomOut();
+      }
+    });
+    modalBackdrop.addEventListener('click', zoomOut);
+    window.addEventListener('keydown', onKeyDown);
+
+    document.body.style.overflow = 'hidden';
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const naturalRatio = thumb.naturalWidth / thumb.naturalHeight || 1;
+    let maxWidth = vw * 0.4;
+    let maxHeight = vh * 0.4;
+    let containerWidth, containerHeight;
+
+    if (naturalRatio > 1) {
+      containerWidth = maxWidth;
+      containerHeight = maxWidth / naturalRatio;
+      if(containerHeight > maxHeight){
+        containerHeight = maxHeight;
+        containerWidth = maxHeight * naturalRatio;
+      }
+    } else {
+      containerHeight = maxHeight;
+      containerWidth = maxHeight * naturalRatio;
+      if(containerWidth > maxWidth){
+        containerWidth = maxWidth;
+        containerHeight = maxWidth / naturalRatio;
+      }
+    }
+
+    zoomContainer.style.width = `${containerWidth}px`;
+    zoomContainer.style.height = `${containerHeight}px`;
+
+    const translateX = rect.left + rect.width/2 - vw/2;
+    const translateY = rect.top + rect.height/2 - vh/2;
+    const scaleX = rect.width / containerWidth;
+    const scaleY = rect.height / containerHeight;
+    const scale = Math.min(scaleX, scaleY);
+
+    zoomContainer.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
+
+    zoomContainer.getBoundingClientRect();
+
+    modalBackdrop.classList.add('active');
+    modalBackdrop.setAttribute('aria-hidden', 'false');
+
+    zoomContainer.style.transition = 'transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    zoomContainer.style.transform = 'translate(-50%, -50%) scale(1)';
+
+    zoomContainer.addEventListener('transitionend', () => {
+      isAnimating = false;
+      closeBtn.focus();
+    }, { once: true });
+  }
+
+  function zoomOut() {
+    if (isAnimating || !zoomContainer) return;
+    isAnimating = true;
+
+    document.body.style.overflow = '';
+    modalBackdrop.setAttribute('aria-hidden', 'true');
+
+    const currentLarge = zoomImg.src;
+    const thumbImg = [...photoGrid.children].find(img => img.dataset.large === currentLarge);
+
+    if (!thumbImg) {
+      cleanup();
+      return;
+    }
+
+    const rect = thumbImg.getBoundingClientRect();
+    const containerRect = zoomContainer.getBoundingClientRect();
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const scaleX = rect.width / containerRect.width;
+    const scaleY = rect.height / containerRect.height;
+    const scale = Math.min(scaleX, scaleY);
+    const translateX = rect.left + rect.width/2 - vw/2;
+    const translateY = rect.top + rect.height/2 - vh/2;
+
+    zoomContainer.style.transition = 'transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    zoomContainer.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
+
+    modalBackdrop.classList.remove('active');
+    closeBtn.classList.remove('visible');
+
+    zoomContainer.addEventListener('transitionend', cleanup, { once: true });
+  }
+
+  function cleanup() {
+    if (zoomContainer) {
+      zoomContainer.remove();
+      zoomContainer = null;
+    }
+    if (closeBtn) {
+      closeBtn.remove();
+      closeBtn = null;
+    }
+    modalBackdrop.removeEventListener('click', zoomOut);
+    window.removeEventListener('keydown', onKeyDown);
+    isAnimating = false;
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      zoomOut();
+    }
+  }
+</script>
+</body>
+</html>
